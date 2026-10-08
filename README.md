@@ -30,7 +30,7 @@ python scripts/validate_resource_package.py
 
 产物输出到 `artifacts/resources/`，该输出目录需要为空。重复构建时通过 `-OutputDirectory` 指定新的空目录，并在校验命令中用 `--directory` 指向同一个目录。发布由 GitHub Actions 完成。
 
-公开源码包含资源、必要脚本、Actions 工作流、版本声明和本说明。`AGENTS.md`、`GOAL.md`、本地 `tests/`、`artifacts/` 和 Python 缓存由 `.gitignore` 排除。自动构建使用公开的产物校验脚本，不依赖本地测试用例。此仓库只提供本仓库 GitHub 打包发布流程。
+本仓库提供资源、构建脚本、Actions 工作流及版本声明。自动构建使用资源包校验脚本，发布平台为 GitHub。
 
 音效制作说明见 [添加新语音包教程](Resources/Audio/添加新语音包教程.md)。
 
