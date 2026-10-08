@@ -1,0 +1,24 @@
+name: Sync current resource indexes
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: resource-index-notification
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Request verified synchronization of the current resource tag
+        env:
+          UPDATE_INDEX_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
+          UPDATE_INDEX_REPOSITORY: ${{ vars.UPDATE_INDEX_REPOSITORY }}
+        run: python scripts/notify_update_index.py --sync-current

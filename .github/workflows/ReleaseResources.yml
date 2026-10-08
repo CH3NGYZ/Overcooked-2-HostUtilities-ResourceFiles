@@ -1,0 +1,181 @@
+name: Release resource package
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Resources/**'
+      - 'current-resource-info.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: resource-release
+  cancel-in-progress: false
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.declaration.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compare resource declaration tag with the previous push
+        id: declaration
+        env:
+          RELEASE_EVENT: ${{ github.event_name }}
+          PREVIOUS_COMMIT: ${{ github.event.before }}
+        run: python scripts/resource_release.py --event "$RELEASE_EVENT" --before "$PREVIOUS_COMMIT" --outputs "$GITHUB_OUTPUT"
+  release:
+    needs: detect
+    if: needs.detect.outputs.publish == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate index notification configuration before creating a tag
+        shell: pwsh
+        env:
+          UPDATE_INDEX_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
+          UPDATE_INDEX_REPOSITORY: ${{ vars.UPDATE_INDEX_REPOSITORY }}
+        run: |
+          python scripts/notify_update_index.py --check-config
+          if ($LASTEXITCODE -ne 0) { throw 'Configure the private index notification first; no tag was created.' }
+      - name: Reject an existing Release including a draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = (Get-Content current-resource-info.json -Raw -Encoding UTF8 | ConvertFrom-Json).tag
+          if ($tag -cnotmatch '^v\d+\.\d+\.\d+$') { throw 'Invalid resource tag.' }
+          $releaseTags = @(& gh api --paginate "repos/$Env:GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name')
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to check releases including drafts; no tag was created.' }
+          if ($releaseTags -ccontains $tag) { throw 'Duplicate resource Release including a draft. Choose a new tag.' }
+      - name: Validate declaration and reject existing tags
+        id: source
+        shell: pwsh
+        run: |
+          $tag = (Get-Content current-resource-info.json -Raw -Encoding UTF8 | ConvertFrom-Json).tag
+          $commit = & ./scripts/Prepare-ResourceRelease.ps1 -Tag $tag
+          "tag=$tag" >> $Env:GITHUB_OUTPUT
+          "commit=$commit" >> $Env:GITHUB_OUTPUT
+      - name: Build ZIP, manifest and metadata before creating the tag
+        shell: pwsh
+        env:
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: ./scripts/Build-ResourcePackage.ps1 -SourceCommit $Env:SOURCE_COMMIT
+      - name: Validate all packaged resources, hashes and metadata
+        shell: pwsh
+        run: |
+          python scripts/validate_resource_package.py
+          if ($LASTEXITCODE -ne 0) { throw 'Resource validation failed.' }
+      - name: Create immutable tag (repeat checks to prevent races)
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: ./scripts/Prepare-ResourceRelease.ps1 -Tag $Env:RELEASE_TAG -SourceCommit $Env:SOURCE_COMMIT -CreateTag
+      - name: Create a new draft release
+        id: draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: |
+          $refJson = & gh api "repos/$Env:GITHUB_REPOSITORY/git/ref/tags/$Env:RELEASE_TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to verify the frozen tag commit.' }
+          $ref = ($refJson -join "`n") | ConvertFrom-Json
+          if ($ref.object.type -cne 'commit' -or $ref.object.sha -cne $Env:SOURCE_COMMIT) {
+            throw 'Tag differs from the frozen source commit.'
+          }
+          $releaseTags = @(& gh api --paginate "repos/$Env:GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name')
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to repeat the release preflight.' }
+          if ($releaseTags -ccontains $Env:RELEASE_TAG) { throw 'Duplicate resource Release including a draft. Choose a new tag.' }
+          & gh release create $Env:RELEASE_TAG --repo $Env:GITHUB_REPOSITORY --verify-tag --draft --prerelease=false --title $Env:RELEASE_TAG --notes-file artifacts/resources/release-notes.md
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to create a new draft. Existing releases are never reused.' }
+          $draftJson = & gh release view $Env:RELEASE_TAG --repo $Env:GITHUB_REPOSITORY --json 'databaseId,isDraft,isPrerelease,tagName'
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to identify the newly created draft.' }
+          $draft = ($draftJson -join "`n") | ConvertFrom-Json
+          if (!$draft.isDraft -or $draft.isPrerelease -or $draft.tagName -cne $Env:RELEASE_TAG -or $draft.databaseId -le 0) {
+            throw 'Expected a new draft release without the prerelease flag.'
+          }
+          "id=$($draft.databaseId)" >> $Env:GITHUB_OUTPUT
+      - name: Upload and verify every draft attachment
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          RELEASE_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          $assetNames = @('HostUtilities.Resources.zip', 'HostUtilities.Resources.manifest', 'release-metadata.json')
+          $assetPaths = @($assetNames | ForEach-Object { Join-Path 'artifacts/resources' $_ })
+          & gh release upload $Env:RELEASE_TAG @assetPaths --repo $Env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Attachment upload failed. The release remains a draft; do not reuse its tag.' }
+          $releaseJson = & gh api "repos/$Env:GITHUB_REPOSITORY/releases/$Env:RELEASE_ID"
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to inspect uploaded attachments.' }
+          $release = ($releaseJson -join "`n") | ConvertFrom-Json
+          if (!$release.draft -or $release.prerelease -or $release.tag_name -cne $Env:RELEASE_TAG -or @($release.assets).Count -ne $assetNames.Count) {
+            throw 'Unexpected draft or attachment list. Publication stopped.'
+          }
+          $verifyDirectory = Join-Path $Env:RUNNER_TEMP ('resource-release-verify-' + [Guid]::NewGuid().ToString('N'))
+          [IO.Directory]::CreateDirectory($verifyDirectory) | Out-Null
+          foreach ($name in $assetNames) {
+            $asset = @($release.assets | Where-Object { $_.name -ceq $name })
+            $localPath = Join-Path 'artifacts/resources' $name
+            if ($asset.Count -ne 1 -or $asset[0].state -cne 'uploaded' -or $asset[0].size -ne (Get-Item -LiteralPath $localPath).Length) {
+              throw "Incomplete or duplicate release attachment: $name"
+            }
+            & gh release download $Env:RELEASE_TAG --repo $Env:GITHUB_REPOSITORY --pattern $name --dir $verifyDirectory
+            if ($LASTEXITCODE -ne 0) { throw "Unable to download draft attachment: $name" }
+            $downloadedPath = Join-Path $verifyDirectory $name
+            if ((Get-Item -LiteralPath $downloadedPath).Length -ne (Get-Item -LiteralPath $localPath).Length -or
+                (Get-FileHash -Algorithm SHA256 -LiteralPath $downloadedPath).Hash -cne (Get-FileHash -Algorithm SHA256 -LiteralPath $localPath).Hash) {
+              throw "Downloaded attachment differs from the build: $name"
+            }
+          }
+      - name: Publish the verified draft release
+        id: publish
+        uses: eregon/publish-release@01df127f5e9a3c26935118e22e738d95b59d10ce # v1.0.6
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          release_id: ${{ steps.draft.outputs.id }}
+      - name: Confirm the release is published
+        id: published
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          RELEASE_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          $releaseJson = & gh api "repos/$Env:GITHUB_REPOSITORY/releases/$Env:RELEASE_ID"
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to confirm the published release.' }
+          $release = ($releaseJson -join "`n") | ConvertFrom-Json
+          if ($release.draft -or $release.prerelease -or $release.tag_name -cne $Env:RELEASE_TAG -or @($release.assets).Count -ne 3) {
+            throw 'The expected resource release was not published.'
+          }
+      - name: Notify the private writer after publication is confirmed
+        shell: pwsh
+        env:
+          UPDATE_INDEX_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
+          UPDATE_INDEX_REPOSITORY: ${{ vars.UPDATE_INDEX_REPOSITORY }}
+          RESOURCE_TAG: ${{ steps.source.outputs.tag }}
+        run: |
+          python scripts/notify_update_index.py --tag "$Env:RESOURCE_TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'Release is published; retry notification/index only, never reuse the tag.' }
+      - name: Keep build output for diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-package-${{ steps.source.outputs.tag || github.run_id }}
+          path: artifacts/resources/
+          if-no-files-found: ignore

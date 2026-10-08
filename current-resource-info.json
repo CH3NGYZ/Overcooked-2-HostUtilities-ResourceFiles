@@ -1,0 +1,11 @@
+{
+  "tag": "v1.0.1",
+  "minModVersion": "1.8.7.02",
+  "resourceFormat": 1,
+  "changelog": "第一次单独拆分资源包, 去除内置的配置管理器, 资源包中不再包含配置管理器, 请自行安装ConfigurationManager, 或在厨房MOD管理器中自行配置",
+  "changelogs": {
+    "zh-cn": "第一次单独拆分资源包, 去除内置的配置管理器, 资源包中不再包含配置管理器, 请自行安装ConfigurationManager, 或在厨房MOD管理器中自行配置",
+    "en-us": "The first independent resource package release, the built-in configuration manager has been removed, the resource package no longer contains the configuration manager, please install ConfigurationManager yourself, or configure it in the Kitchen MOD Manager.",
+    "ko-kr": "첫 번째 독립 리소스 패키지 릴리스, 내장 구성 관리자가 제거되었으며 리소스 패키지에는 더 이상 구성 관리자가 포함되지 않습니다. ConfigurationManager를 직접 설치하거나 Kitchen MOD Manager에서 구성하십시오."
+  }
+}

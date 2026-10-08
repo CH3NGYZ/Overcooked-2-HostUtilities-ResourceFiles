@@ -1,282 +1,85 @@
-# 《街机MOD》语音包制作与标签对照教程
+## 独立资源包发布
 
-本教程用于制作《胡闹厨房2 街机MOD》v1.8.6 及以上版本的语音包。v1.8.6 版本的 MOD 会按游戏枚举成员名识别音效标签，并支持用音频文件名替换表情轮盘文字。
+本仓库负责资源 ZIP、文件清单和独立版本；适配后的 MOD 先检查自身更新，再检查资源。
 
-## 1. 语音包目录
+根 `current-resource-info.json` 维护当前资源的 Tag、兼容条件，以及自上一次资源 Release 以来、本次待发布版本的完整更新日志。资源版本只从 `vX.Y.Z` Tag 推导，不再维护 `versionCode`，发布历史保存在各版本 Release 和元数据中。
 
-将语音文件放在资源包的 `Audio` 目录下。每个子目录就是一个语音包，目录名会显示在 MOD 配置面板中。
+GitHub Actions 比较提交前后的 current-resource-info.json Tag；仅 Tag 变化自动构建发布，Tag 不变时资源或日志提交不会发布。从旧文件名迁移时会读取上一提交的声明，仅改名仍跳过发布。
+
+已发布版本的资源不可修改，已有附件只核对、不覆盖。
+
+## 资源目录与打包
+
+所有需要发布的资源统一放在 `Resources/` 中，目前包含 `Audio/` 和 `TextChatNotifySound/`。构建脚本递归打包其中的全部文件和目录，新增资源无需修改打包目录列表。
+
+ZIP 直接以 `Resources/` 内的内容为顶层，不添加外层目录：
 
 ```text
 Audio/
-└─ 我的语音包/
-   ├─ GameOneShotAudioTag.UIEmoteHi.1.你好.wav
-   ├─ GameOneShotAudioTag.Chop.1.wav
-   └─ GameLoopingAudioTag.MovingPlatform.Start.1.wav
+TextChatNotifySound/
+HostUtilities.Resources.info.json
+HostUtilities.Resources.manifest
 ```
 
-目录名可以使用中文。MOD 会自动扫描 `Audio` 下的语音包目录，不需要修改 C# 代码或语言表。
+本地构建并校验（Windows PowerShell 5.1 或更新版本、Python 3.11 或更新版本）：
 
-支持 WAV 文件。建议同一个语音包统一采样率、声道和响度，避免不同文件的音量差异过大。
-
-## 2. 文件名规则
-
-新格式使用完整的游戏枚举类型名，并用点号 `.` 分隔字段。文件名中的枚举成员名必须与游戏定义一致。
-
-### 单次音效
-
-普通单次音效只保留 Tag 和序号：
-
-```text
-GameOneShotAudioTag.<枚举成员名>.<序号>.wav
+```powershell
+./scripts/Build-ResourcePackage.ps1
+python scripts/validate_resource_package.py
 ```
 
-需要替换表情文字时，仅对 `UIEmote...` Tag 在序号后写入内容：
+产物输出到 `artifacts/resources/`，该输出目录需要为空。重复构建时通过 `-OutputDirectory` 指定新的空目录，并在校验命令中用 `--directory` 指向同一个目录。发布由 GitHub Actions 完成。
 
-```text
-GameOneShotAudioTag.Chop.1.wav
-GameOneShotAudioTag.UIEmoteHi.2.你好.wav
-GameOneShotAudioTag.UIEmoteSwear.1.这句内容.wav
+公开源码包含资源、必要脚本、Actions 工作流、版本声明和本说明。`AGENTS.md`、`GOAL.md`、本地 `tests/`、`artifacts/` 和 Python 缓存由 `.gitignore` 排除。自动构建使用公开的产物校验脚本，不依赖本地测试用例。此仓库只提供本仓库 GitHub 打包发布流程。
+
+音效制作说明见 [添加新语音包教程](Resources/Audio/添加新语音包教程.md)。
+
+## GitHub 自动发布
+
+`main` 分支的 `Resources/**` 或 `current-resource-info.json` 更新时先比较声明的 tag，只有 Tag 变化才构建发布。手动运行明确尝试当前声明，仍会拒绝重复 Tag。版本取自 `current-resource-info.json` 的 `tag`，重复 Tag 或 Release（包括草稿）会停止发布。
+
+工作流使用 `gh` 创建非预发布的草稿并上传 ZIP、manifest 和 metadata，逐个下载核对大小与 SHA256 后，由固定提交版本的 `eregon/publish-release` 将该草稿公开。创建草稿或附件校验失败会停止公开发布。
+
+GitHub Release 创建、上传和公开步骤使用运行时提供的 `GITHUB_TOKEN`。发布后索引通知使用配置在 Actions 中的 `UPDATE_INDEX_TOKEN` Secret 和 `UPDATE_INDEX_REPOSITORY` Variable。凭据仅通过环境变量传入，不写入源码、命令参数或产物；公开发布确认成功后才运行索引通知。
+
+## 多语言更新日志与索引通知
+
+current-resource-info.json 示例（不手写 version，版本从 tag 推导）：
+
+```json
+{
+  "tag": "v1.0.0",
+  "minModVersion": "1.8.7.02",
+  "resourceFormat": 1,
+  "changelog": "兼容旧 MOD 的中文日志。",
+  "changelogs": {
+    "zh-cn": "完整中文日志。",
+    "en-us": "Complete English release notes.",
+    "ko-kr": "전체 한국어 업데이트 내역입니다."
+  }
+}
 ```
 
-普通音效的额外文件名内容不会被 MOD 使用，应省略。`UIEmote...` 文件没有内容时仍会播放音频，但不会替换表情文字。
+`minModVersion` 是包含该版本的最低 MOD 版本；当前声明允许 MOD 1.8.7.02 及以上版本使用。客户端同时校验 MOD 自身的最低资源版本要求和资源格式。
 
-### 循环音效
+构建和发布保留三种语言的完整日志。适配后的 MOD 使用当前 MOD 语言选择日志，缺译回退英文或旧 changelog，语言不影响下载平台。
 
-循环音效在 Tag 和序号之间增加 `Start`、`Loop` 或 `Stop`：
+发布前配置 Actions Secret UPDATE_INDEX_TOKEN（能向私有源码仓库发送 repository_dispatch）和 Variable UPDATE_INDEX_REPOSITORY（私有源码仓库 owner/repo）。本仓库 Release 使用自动提供的 GITHUB_TOKEN；私有写入器自行核验已发布的 metadata 和附件，再检查 Stable/Beta 的 update.json。文件存在时只合并 resources.releases，保留 MOD、代理及其他字段；文件不存在时跳过该频道，由该频道的 MOD 首次发布负责创建索引。API 权限或服务错误会停止合并。
 
-```text
-GameLoopingAudioTag.<枚举成员名>.<Start|Loop|Stop>.<序号>.wav
+新资源协议需要 MOD 1.8.7.02；先发布该 MOD，再发布资源。旧 v1.8.7.01 DLL 不支持新的资源 Tag 和省略 versionCode 的记录；资源加入索引后，仍在使用该旧版的用户需要手动升级。
+
+Release 已公开后通知失败，保留现有 Tag 和资产，只补通知或在私有仓库运行 Update public indexes，不重跑发布已有 Tag。手动补通知只从环境变量读取上述配置：
+
+```powershell
+python scripts/notify_update_index.py --tag v1.0.0
 ```
 
-例如：
+本地构建和校验不要求发布或通知凭据；Actions 在创建 Tag 前检查通知配置。
 
-```text
-GameLoopingAudioTag.WaterJet.Start.1.wav
-GameLoopingAudioTag.WaterJet.Loop.1.wav
-GameLoopingAudioTag.WaterJet.Stop.1.wav
-```
+## 手动同步当前资源信息
 
-序号必须是非负整数。同一个 Tag 可以通过不同序号提供多个声音，触发时会随机选择。循环音效文件名中的额外文字不会被 MOD 使用，应省略。
+在 Actions 中运行 `Sync current resource indexes`（`SyncResourceIndex.yml`）。工作流读取 main 的 `current-resource-info.json`，向私有统一写入器发送 `resources-sync` 通知。私有任务核验该 Tag 已公开的 metadata 与附件，并确认声明与实际包一致后同步两个仓库已有的 `update.json`。
 
-旧版 `Tag-内容.wav` 和 `Tag-Start-内容.wav` 格式仍可读取，但新语音包应使用上面的点号格式。
+同 Tag 记录原位替换；没有同 Tag 时插到 `resources.releases` 最前面；列表最多保留 5 条，MOD、代理和其他字段保留。目标文件不存在则跳过。自动资源合并和 MOD 索引刷新也遵守资源最多 5 条；不会删除 GitHub Releases、Tag 或附件。
 
-## 3. Tag、语言表名称与中文含义对照
-
-以下对照采用 MOD 语言表中的语音事件名称。第一列是游戏枚举 Tag，第二列是语言表事件名称，第三列是中文说明。
-
-实际语音文件名必须使用完整的枚举类型名和成员名。例如 `GameOneShotAudioTag.Pickup.1.wav` 使用的是第一列的 Tag；第二列只是语言表事件名称，不能写成 `Grab-拿.wav`。如果文件名只有 `GameOneShotAudioTag.UIEmoteHi.1.wav`，音频会播放，但表情文字保持游戏原文。
-
-普通游戏语音和表情轮盘语音是不同的 Tag。例如，游戏中的普通咒骂使用 `GameOneShotAudioTag.Curse`，表情轮盘中的咒骂使用 `GameOneShotAudioTag.UIEmoteSwear`。MOD 会优先让 `Curse` 复用 `UIEmoteSwear` 的音频，因此新语音包只需要添加 `UIEmoteSwear` 文件；只有 `UIEmote...` Tag 的文件名内容会参与表情文字替换。为兼容旧语音包，如果没有 `UIEmoteSwear` 文件，MOD 仍会读取独立的 `Curse` 文件。
-
-### `GameOneShotAudioTag`：单次音效
-
-普通单次音效的完整对照如下。以下分组只影响教程中的查找顺序，不影响文件名格式；制作文件时仍使用表格第一列的完整 Tag。
-
-#### 表情与厨师选择
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.UIEmoteSwear` | `Cursing` | 局内表情-咒骂/大厅表情-咒骂 |
-| `GameOneShotAudioTag.UIEmoteOk` | `Good / OK` | 局内表情-好!/大厅表情-好! |
-| `GameOneShotAudioTag.UIEmotePrep` | `Preparing` | 局内表情-准备中... |
-| `GameOneShotAudioTag.UIEmoteServing` | `Serving` | 局内表情-上菜中... |
-| `GameOneShotAudioTag.UIEmoteWashUp` | `Cleaning` | 局内表情-清洗中... |
-| `GameOneShotAudioTag.UIEmoteCooking` | `Cooking` | 局内表情-烹饪中... |
-| `GameOneShotAudioTag.UIEmoteGreatJob` | `Well_Played` | 大厅表情-干得漂亮 |
-| `GameOneShotAudioTag.UIEmoteHi` | `Hello` | 大厅表情-你好 |
-| `GameOneShotAudioTag.UIEmoteDisappointed` | `Better_Luck_Next_Time` | 大厅表情-祝你下次好运! |
-| `GameOneShotAudioTag.UIEmoteCelebrate` | `We_Did_It` | 大厅表情-我们成功啦! |
-
-#### 厨师操作与背包
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.UIChefSelected` | `Select_Chef` | 选择厨师 |
-| `GameOneShotAudioTag.ChangeChef` | `ChangeChef` | 切换厨师 |
-| `GameOneShotAudioTag.Chop` | `Chop` | 切菜 |
-| `GameOneShotAudioTag.Throw` | `Throw` | 扔东西 |
-| `GameOneShotAudioTag.Pickup` | `Grab` | 捡起 |
-| `GameOneShotAudioTag.PutDown` | `Place` | 放下 |
-| `GameOneShotAudioTag.Catch` | `Catch` | 接住 |
-| `GameOneShotAudioTag.Dash` | `Dash` | 冲刺 |
-| `GameOneShotAudioTag.PlayerDive` | `PlayerDive` | 厨师落水 |
-| `GameOneShotAudioTag.PlayerFall` | `PlayerFall` | 厨师掉落 |
-| `GameOneShotAudioTag.PlayerSpawn` | `PlayerSpawn` | 厨师重生 |
-| `GameOneShotAudioTag.DLC_05_Bag_Pickup` | `DLC_05_Bag_Pickup` | 背上背包 |
-| `GameOneShotAudioTag.DLC_05_Item_Collect` | `DLC_05_Item_Collect` | 从背包取 |
-
-#### 烹饪与厨房操作
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.TrashCan` | `Trash_Can` | 垃圾桶 |
-| `GameOneShotAudioTag.WashedPlate` | `Dish_Out` | 洗完盘子 |
-| `GameOneShotAudioTag.WashingSplash` | `Wash_Dishes` | 洗碗 |
-| `GameOneShotAudioTag.SuccessfulDelivery` | `Serving_Success` | 上菜成功 |
-| `GameOneShotAudioTag.AddToPot` | `AddToPot` | 添加进搅拌碗 |
-| `GameOneShotAudioTag.ServiceBell` | `ServiceBell` | 上菜铃 |
-| `GameOneShotAudioTag.ImCooked` | `Pot_Done` | 锅完成 |
-| `GameOneShotAudioTag.CookingWarning` | `Pot_Danger` | 锅报警 |
-| `GameOneShotAudioTag.FireIgnition` | `FireIgnition` | 点火 |
-| `GameOneShotAudioTag.DLC_08_Sauce_Machine_Change` | `DLC_08_Sauce_Machine_Change` | 切酱 |
-| `GameOneShotAudioTag.DLC_08_Drinks_Machine_Change` | `DLC_08_Sauce_Machine_Change` | 切饮料 |
-
-#### 敌群操作与厨房破坏
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.DLC_07_Gate_Unlock` | `DLC_07_Gate_Unlock` | 敌群付钱开门 |
-| `GameOneShotAudioTag.CutsceneZombie` | `CutsceneZombie` | 僵尸叫 |
-| `GameOneShotAudioTag.DLC_07_Wood_Hit` | `DLC_07_Wood_Hit` | 敌群僵尸锤门 |
-| `GameOneShotAudioTag.DLC_07_Wood_Break` | `DLC_07_Wood_Break` | 敌群门木头破损 |
-| `GameOneShotAudioTag.DLC_07_Wood_Smash` | `DLC_07_Wood_Smash` | 敌群门木头掉落 |
-| `GameOneShotAudioTag.DLC_07_Nombie_Spawn` | `DLC_07_Nombie_Spawn` | 敌群僵尸出生 |
-| `GameOneShotAudioTag.DLC_07_Nombie_Despawn` | `DLC_07_Nombie_Despawn` | 敌群僵尸死亡 |
-| `GameOneShotAudioTag.DLC_07_Wave_Incoming` | `DLC_07_Wave_Incoming` | 敌群下一波即将来袭 |
-| `GameOneShotAudioTag.DLC_07_Kitchen_Damage_UI` | `DLC_07_Kitchen_Damage_UI` | 敌群破门后厨房受损 |
-| `GameOneShotAudioTag.DLC_07_Kitchen_Debris` | `DLC_07_Kitchen_Debris` | 敌群破门后厨房掉落碎片 |
-| `GameOneShotAudioTag.DLC_07_Battlement_Counter` | `DLC_07_Battlement_Counter` | 敌群工作台移动 |
-| `GameOneShotAudioTag.DLC_07_Failed` | `Kitchen_Destroyed` | 厨房毁灭 |
-| `GameOneShotAudioTag.DLC_07_Hammer` | `Repair_Door` | 修门 |
-
-#### 马戏团音效
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.DLC_08_Cannon_Rotate_Sweetner` | `DLC_08_Cannon_Rotate_Sweetner` | 握住马戏团调炮摇杆 |
-| `GameOneShotAudioTag.DLC_08_Cannon_Rotate_Sweetner_Alt` | `DLC_08_Cannon_Rotate_Sweetner_Alt` | 松开马戏团调炮摇杆 |
-| `GameOneShotAudioTag.DLC_08_Fuse_Ignite` | `DLC_08_Fuse_Ignite` | 马戏团上炮 |
-| `GameOneShotAudioTag.DLC_08_Cannon_Enter` | `DLC_08_Cannon_Enter` | 马戏团下炮 |
-| `GameOneShotAudioTag.DLC_08_Cannon_Fire` | `Cannon_Fire` | 加农炮发射 |
-| `GameOneShotAudioTag.DLC_08_Cannon_Crowd` | `DLC_08_Cannon_Crowd` | 马戏团大炮欢呼 |
-| `GameOneShotAudioTag.DLC_08_Fuse_Death` | `DLC_08_Fuse_Death` | 马戏团烟火熄灭 |
-
-#### 饥饿之夜机关
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.DLC_07_Chopper` | `DLC_07_Chopper` | 饥饿之夜断头台切菜 |
-| `GameOneShotAudioTag.DLC_07_Chopper_Chain` | `DLC_07_Chopper_Chain` | 饥饿之夜断头台链条上升 |
-| `GameOneShotAudioTag.DLC_07_Chopper_Chain_End` | `DLC_07_Chopper_Chain_End` | 饥饿之夜断头台链条上升结束 |
-
-#### 关卡流程、计时与结果
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.ReadyIntro` | `ReadyIntro` | 关卡准备 |
-| `GameOneShotAudioTag.LevelGo` | `LevelGo` | 关卡开始 |
-| `GameOneShotAudioTag.LevelEnd` | `LevelEnd` | 关卡结束 |
-| `GameOneShotAudioTag.TimesUp` | `Time_Up` | 时间到 |
-| `GameOneShotAudioTag.RecipeTimeOut` | `Menu_Expired` | 菜单过期 |
-| `GameOneShotAudioTag.TimerShake` | `TimerShake` | 关卡倒计时摇晃 |
-| `GameOneShotAudioTag.LevelTimerBeep` | `LevelTimerBeep` | 关卡倒计时哔哔响 |
-| `GameOneShotAudioTag.ResultsStar01` | `One_Star` | 一星 |
-| `GameOneShotAudioTag.ResultsStar02` | `Two_Stars` | 二星 |
-| `GameOneShotAudioTag.ResultsStar03` | `Three_Stars` | 三星 |
-
-#### 矿井音效
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.MineCameraShake` | `MineCameraShake` | 矿井画面抖动 |
-| `GameOneShotAudioTag.MinecartLeftToRight` | `MinecartLeftToRight` | 矿车左到右 |
-| `GameOneShotAudioTag.MineWorkstationStartAlt` | `MineWorkstationStartAlt` | 矿井工作台准备移动 |
-| `GameOneShotAudioTag.MineWorkstationMoveAlt` | `MineWorkstationMoveAlt` | 矿井工作台移动 |
-
-#### 地宫与地图环境
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.DLC_07_Keep_Amb_Turn` | `DLC_07_Keep_Amb_Turn` | 地宫管道 |
-| `GameOneShotAudioTag.DLC_07_Furnace_Close` | `DLC_07_Furnace_Close` | 烤炉关门 |
-| `GameOneShotAudioTag.DLC_07_Furnace_Open` | `DLC_07_Furnace_Open` | 烤炉开门 |
-| `GameOneShotAudioTag.DLC_07_Lever` | `DLC_07_Lever` | 地宫庭院拨杆 |
-| `GameOneShotAudioTag.DLC_07_Keep_Bridge` | `DLC_07_Keep_Bridge` | 地宫桥梁 |
-| `GameOneShotAudioTag.DLC_07_Courtyard_Bridge` | `DLC_07_Courtyard_Bridge` | 庭院桥梁 |
-| `GameOneShotAudioTag.DLC_Raven` | `DLC_Raven` | 乌鸦叫 |
-| `GameOneShotAudioTag.DLC_02_Bellow` | `DLC_02_Bellow` | 呼呼 |
-| `GameOneShotAudioTag.WorldMapBoing` | `WorldMapBoing` | 撞倒面包 |
-
-#### 传送、移动与通用环境
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.TeleportIn` | `TeleportIn` | 传送门入 |
-| `GameOneShotAudioTag.TeleportOut` | `TeleportOut` | 传送门出 |
-| `GameOneShotAudioTag.MovingPlatformStart` | `MovingPlatformStart` | 移动平台摇杆开始 |
-| `GameOneShotAudioTag.MovingPlatformStop` | `MovingPlatformStop` | 移动平台摇杆结束 |
-| `GameOneShotAudioTag.SwitchOn` | `SwitchOn` | 开关亮 |
-| `GameOneShotAudioTag.SwitchOff` | `SwitchOff` | 开关灭 |
-| `GameOneShotAudioTag.Impact` | `Collision` | 碰撞 |
-
-### `GameLoopingAudioTag`：循环音效
-
-循环音效的文件名格式是 `GameLoopingAudioTag.枚举成员名.Start/Loop/Stop.序号.wav`。循环音效不使用文件名文字，因此不要追加额外内容。
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameLoopingAudioTag.WaterJet` | `WaterJet` | 水枪喷水 |
-| `GameLoopingAudioTag.ExtinguisherSpray` | `ExtinguisherSpray` | 灭火器灭火 |
-| `GameLoopingAudioTag.FryingPanSizzle` | `FryingPanSizzle` | 煎锅煎饼 |
-| `GameLoopingAudioTag.PanSizzle` | `PanSizzle` | 煮锅熟饭 |
-| `GameLoopingAudioTag.MixerLoop` | `MixerLoop` | 搅拌碗搅拌 |
-| `GameLoopingAudioTag.OvenLoop` | `OvenLoop` | 烤炉烧烤 |
-| `GameLoopingAudioTag.MovingPlatform` | `MovingPlatform` | 移动平台 |
-| `GameLoopingAudioTag.DLC_08_Cannon_Fuse` | `DLC_08_Cannon_Fuse` | 待在炮筒 |
-
-同一个循环 Tag 可以分别提供 `Start`、`Loop`、`Stop` 三个阶段；缺少的阶段会继续使用游戏原声。
-
-### 表情 Tag 与语言表名称
-
-下列 `UIEmote...` Tag 会参与表情文字替换。表情文字配置默认使用“使用语音包文件名”，但只有选择了语音包且存在对应音频时才会替换；否则保留游戏原文。
-
-| 游戏 Tag | 语言表事件名称 | 中文说明 |
-| --- | --- | --- |
-| `GameOneShotAudioTag.UIEmoteSwear` | `Cursing` | 局内表情-咒骂/大厅表情-咒骂 |
-| `GameOneShotAudioTag.UIEmoteOk` | `Good / OK` | 局内表情-好!/大厅表情-好! |
-| `GameOneShotAudioTag.UIEmotePrep` | `Preparing` | 局内表情-准备中... |
-| `GameOneShotAudioTag.UIEmoteServing` | `Serving` | 局内表情-上菜中... |
-| `GameOneShotAudioTag.UIEmoteWashUp` | `Cleaning` | 局内表情-清洗中... |
-| `GameOneShotAudioTag.UIEmoteCooking` | `Cooking` | 局内表情-烹饪中... |
-| `GameOneShotAudioTag.UIEmoteGreatJob` | `Well_Played` | 大厅表情-干得漂亮 |
-| `GameOneShotAudioTag.UIEmoteHi` | `Hello` | 大厅表情-你好 |
-| `GameOneShotAudioTag.UIEmoteDisappointed` | `Better_Luck_Next_Time` | 大厅表情-祝你下次好运! |
-| `GameOneShotAudioTag.UIEmoteCelebrate` | `We_Did_It` | 大厅表情-我们成功啦! |
-
-配置项 `Emote_Good` 和 `Emote_OK` 都使用 `GameOneShotAudioTag.UIEmoteOk`，只需要准备一组 `UIEmoteOk` 音频文件。
-
-## 4. 一个标签制作多个声音
-
-同一个 Tag 可以通过不同序号提供多个文件，触发时会随机选择一个：
-
-```text
-GameOneShotAudioTag.UIEmoteHi.1.你好.wav
-GameOneShotAudioTag.UIEmoteHi.2.嗨，又见面了.wav
-GameOneShotAudioTag.UIEmoteHi.3.欢迎回来.wav
-```
-
-普通音效也可以使用多个序号，但应省略不会被 MOD 读取的文件名内容，例如 `GameOneShotAudioTag.Chop.1.wav`、`GameOneShotAudioTag.Chop.2.wav`。循环音效的同一个阶段也可以使用多个序号。
-
-## 5. 表情文字替换
-
-表情文字配置默认使用“使用语音包文件名”。只有同时满足以下条件时，文字才会替换：
-
-1. 配置面板已经选择了语音包。
-2. 该语音包中存在对应的 `UIEmote...` 单次音效文件。
-3. 对应文件名包含 `.序号.内容`，而不是在序号后直接结束。
-
-例如，下面两个文件都会播放 `UIEmoteHi` 音效，但只有第一个会提供表情文字：
-
-```text
-GameOneShotAudioTag.UIEmoteHi.1.你好.wav
-GameOneShotAudioTag.UIEmoteHi.2.wav
-```
-
-第二个文件没有内容，因此表情会保留游戏原文。
-
-## 6. 常见问题
-
-- **音效没有替换**：检查扩展名是否为 `.wav`、完整 Tag 是否拼写正确、点号字段顺序是否正确，以及文件是否放在已选择的语音包目录中。
-- **循环音效只有一段生效**：检查是否分别使用了 `Start`、`Loop`、`Stop`，并确认序号和 Tag 都正确。
-- **表情文字没有替换**：确认配置选择的是“使用语音包文件名”，并确认文件名在序号后还有 `.内容`；`GameOneShotAudioTag.UIEmoteHi.1.wav` 按规则只播放音频，不替换文字。
-- **中文显示不完整**：只有 `UIEmote...` 文件会读取序号后的内容作为表情文字；内容从序号后的下一个点号开始，内容中的点号可以保留。不要漏写类型名、枚举成员名或序号。
+手动同步使用与发布通知相同的 Secret/Variable；工作流显示通知已受理后，可在私有仓库 `Update public indexes` 查看写入结果。重复运行可以修复索引，不重建资源包。修改资源、最低 MOD 或日志后，应换新 Tag 发布新包，不能把未发布的声明写入旧包索引。
