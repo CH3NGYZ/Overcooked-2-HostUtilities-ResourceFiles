@@ -83,3 +83,11 @@ python scripts/notify_update_index.py --tag v1.0.0
 同 Tag 记录原位替换；没有同 Tag 时插到 `resources.releases` 最前面；列表最多保留 5 条，MOD、代理和其他字段保留。目标文件不存在则跳过。自动资源合并和 MOD 索引刷新也遵守资源最多 5 条；不会删除 GitHub Releases、Tag 或附件。
 
 手动同步使用与发布通知相同的 Secret/Variable；工作流显示通知已受理后，可在私有仓库 `Update public indexes` 查看写入结果。重复运行可以修复索引，不重建资源包。修改资源、最低 MOD 或日志后，应换新 Tag 发布新包，不能把未发布的声明写入旧包索引。
+
+## 手动同步 ConfigurationManager
+
+在 Actions 中运行 `Sync ConfigurationManager indexes`（`SyncConfigurationManager.yml`），将 GitHub Release 的 BepInEx5 ZIP 文件链接填入 `release_file_link`。这里只需输入文件链接，不需要手写 JSON 或修改资源版本声明。
+
+工作流沿用 `UPDATE_INDEX_TOKEN` 和 `UPDATE_INDEX_REPOSITORY`，发送 `configurationmanager-sync` 通知。通知已受理后，在私有仓库 `Write ConfigurationManager indexes` 查看最终结果；两个仓库的工作流都需要先部署到 main。私有任务从链接解析 owner/repo 和 Release Tag，通过官方 API 读取资产大小、SHA256 digest 和完整 Release 更新说明；下载 ZIP 核验后，静态读取 `ConfigurationManager.dll` 的 `BepInPlugin` 版本。API 未提供 SHA256、附件校验失败或 DLL 插件声明缺失时停止同步。
+
+两个已有 `update.json` 的根 `configurationmanager` 会整体替换为单个对象，包括 `tag`、`version`、`url`、`size`、`sha256` 和 `changelog`，没有 `releases` 列表。`url` 保留输入的链接（去掉外围空白），`version` 保留 DLL 插件声明版本，例如官方 v19.0 包的插件版本为 `19.0`。MOD、资源、代理和其他字段保留；缺少 `update.json` 的频道跳过，权限或服务错误会停止。重复运行相同链接不产生重复条目。

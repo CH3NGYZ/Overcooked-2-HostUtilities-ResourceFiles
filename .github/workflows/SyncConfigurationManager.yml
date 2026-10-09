@@ -1,0 +1,30 @@
+name: Sync ConfigurationManager indexes
+on:
+  workflow_dispatch:
+    inputs:
+      release_file_link:
+        description: GitHub Release ZIP file link for ConfigurationManager (BepInEx5)
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: configurationmanager-index-notification
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Request ConfigurationManager index synchronization
+        env:
+          RELEASE_FILE_LINK: ${{ inputs.release_file_link }}
+          UPDATE_INDEX_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
+          UPDATE_INDEX_REPOSITORY: ${{ vars.UPDATE_INDEX_REPOSITORY }}
+        run: python scripts/notify_update_index.py --configurationmanager
