@@ -11,3 +11,6 @@ __pycache__/
 # Local environment credentials.
 /.env
 /.env.*
+.vscode
+# Manual mirror helper depends on a local executable and local credentials.
+/scripts/Sync-ResourceReleasesToGitee.ps1
