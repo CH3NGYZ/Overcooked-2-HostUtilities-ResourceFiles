@@ -15,8 +15,9 @@ def validate_changelogs(record):
             raise RuntimeError('Invalid localized resource changelogs.')
 
 
-def load_descriptor(path):
-    config = json.loads(path.read_text(encoding='utf-8-sig'))
+def validate_descriptor(config):
+    if not isinstance(config, dict) or set(config) - {'tag', 'minModVersion', 'resourceFormat', 'changelog', 'changelogs'}:
+        raise RuntimeError('Invalid resource declaration fields.')
     tag = config.get('tag', '')
     if (not isinstance(tag, str) or not re.fullmatch(r'v\d+\.\d+\.\d+', tag)
             or 'versionCode' in config
@@ -26,6 +27,10 @@ def load_descriptor(path):
         raise RuntimeError('Invalid current-resource-info.json; version is derived from tag.')
     validate_changelogs(config)
     return dict(config, version=tag.removeprefix('v'))
+
+
+def load_descriptor(path):
+    return validate_descriptor(json.loads(path.read_text(encoding='utf-8-sig')))
 
 
 def git(*args):

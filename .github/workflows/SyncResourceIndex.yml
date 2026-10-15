@@ -1,15 +1,42 @@
 name: Sync current resource indexes
 on:
   workflow_dispatch:
+    inputs:
+      resource_source_ref:
+        description: Resource repository commit SHA; leave empty to read main/current-resource-info.json
+        type: string
+        required: false
+      tag:
+        description: Optional tag check; must match the selected declaration
+        type: string
+        required: false
+      dry_run:
+        description: Verify the Release and proposed indexes without writing
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      resource_source_ref:
+        type: string
+        default: ''
+      tag:
+        type: string
+        default: ''
+      dry_run:
+        type: boolean
+        default: false
+    secrets:
+      UPDATE_INDEX_TOKEN:
+        required: true
 permissions:
   contents: read
-concurrency:
-  group: resource-index-notification
-  cancel-in-progress: false
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
+    concurrency:
+      group: public-resource-index-writer
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
         with:
@@ -17,8 +44,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Request verified synchronization of the current resource tag
+      - name: Verify the selected Release and write existing resource indexes
         env:
-          UPDATE_INDEX_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
-          UPDATE_INDEX_REPOSITORY: ${{ vars.UPDATE_INDEX_REPOSITORY }}
-        run: python scripts/notify_update_index.py --sync-current
+          GH_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
+          RESOURCE_SOURCE_REF: ${{ inputs.resource_source_ref }}
+          RESOURCE_TAG: ${{ inputs.tag }}
+          INDEX_DRY_RUN: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          options=(--resource-source-ref "$RESOURCE_SOURCE_REF" --tag "$RESOURCE_TAG")
+          if [[ "$INDEX_DRY_RUN" == "true" ]]; then options+=(--dry-run); fi
+          python scripts/update_index.py "${options[@]}"

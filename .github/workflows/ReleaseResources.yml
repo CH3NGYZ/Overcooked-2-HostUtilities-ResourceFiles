@@ -34,6 +34,9 @@ jobs:
     if: needs.detect.outputs.publish == 'true'
     runs-on: windows-2025
     timeout-minutes: 180
+    outputs:
+      tag: ${{ steps.source.outputs.tag }}
+      source_ref: ${{ steps.source.outputs.commit }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -41,14 +44,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate index notification configuration before creating a tag
+      - name: Check index writer token before creating a tag
         shell: pwsh
         env:
-          UPDATE_INDEX_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
-          UPDATE_INDEX_REPOSITORY: ${{ vars.UPDATE_INDEX_REPOSITORY }}
+          GH_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
         run: |
-          python scripts/notify_update_index.py --check-config
-          if ($LASTEXITCODE -ne 0) { throw 'Configure the private index notification first; no tag was created.' }
+          python scripts/update_index.py --check-config
+          if ($LASTEXITCODE -ne 0) { throw 'Configure the cross-repository index token first; no tag was created.' }
       - name: Reject an existing Release including a draft
         shell: pwsh
         env:
@@ -163,15 +165,6 @@ jobs:
           if ($release.draft -or $release.prerelease -or $release.tag_name -cne $Env:RELEASE_TAG -or @($release.assets).Count -ne 3) {
             throw 'The expected resource release was not published.'
           }
-      - name: Notify the private writer after publication is confirmed
-        shell: pwsh
-        env:
-          UPDATE_INDEX_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
-          UPDATE_INDEX_REPOSITORY: ${{ vars.UPDATE_INDEX_REPOSITORY }}
-          RESOURCE_TAG: ${{ steps.source.outputs.tag }}
-        run: |
-          python scripts/notify_update_index.py --tag "$Env:RESOURCE_TAG"
-          if ($LASTEXITCODE -ne 0) { throw 'Release is published; retry notification/index only, never reuse the tag.' }
       - name: Keep build output for diagnosis
         if: always()
         uses: actions/upload-artifact@v4
@@ -179,3 +172,11 @@ jobs:
           name: resource-package-${{ steps.source.outputs.tag || github.run_id }}
           path: artifacts/resources/
           if-no-files-found: ignore
+  update-index:
+    needs: release
+    uses: ./.github/workflows/SyncResourceIndex.yml
+    with:
+      resource_source_ref: ${{ needs.release.outputs.source_ref }}
+      tag: ${{ needs.release.outputs.tag }}
+    secrets:
+      UPDATE_INDEX_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}

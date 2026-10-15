@@ -2,6 +2,8 @@
 /artifacts/
 __pycache__/
 *.py[cod]
+/scripts/PluginVersionReader/bin/
+/scripts/PluginVersionReader/obj/
 
 # Local development notes and tests are not part of the public source repository.
 /AGENTS.md
