@@ -9,12 +9,20 @@
 | 维护仓库 | 入口 | 允许修改的字段 |
 | --- | --- | --- |
 | MOD 源码 | AutoBuild 发布成功后调用 UpdateIndex，或手动 UpdateIndex | `mod.releases`；首次初始化时补齐客户端 envelope |
-| 资源源码 | ReleaseResources 成功后调用 SyncResourceIndex，或手动 SyncResourceIndex | `resources.releases` |
+| 资源源码 | ReleaseResources 与 Sync2Gitee 均成功后调用 SyncResourceIndex，或手动 SyncResourceIndex | `resources.releases` |
 | 资源源码 | 仅手动 UpdateAuxiliaryIndexes | 选择 `proxies`、`configurationmanager` 或两项 |
 
 资源和辅助写入器只更新已有文件，缺文件跳过，不创建频道索引。只有 MOD 首次发布/修复负责初始化客户端必需的 schema、频道、仓库描述、平台模板和空列表；它不查询资源 Release，也不从本仓库读取代理目录。已有其他字段保持原样，MOD 不裁剪资源历史。
 
 `proxies.json` 在本仓库 main 单独维护，不随提交自动写入索引。MOD 代码仅保留获取 raw 索引所需的八条固定启动回退；在线 API/Release 代理仍取自索引，不在 MOD 构建时拉取资源仓库。
+
+## Gitee 上传成功门禁
+
+自动资源发布按 `release → sync-2-gitee → update-index` 串行执行。`Sync2Gitee.yml` 通过 `workflow_call` 接收本次 Tag 和 `GITEE_TOKEN`，从该公开 GitHub Release 下载三份固定附件，再由 `nICEnnnnnnnLee/action-gitee-release@v2.0.0` 上传到 `ch3ngyz/Overcooked-2-HostUtilities-Resources`。以同步 Workflow 成功为准，不增加 Gitee 回读、大小或 SHA256 verify。
+
+`update-index` 同时依赖 `release` 和 `sync-2-gitee` 的成功结果；任何上游失败、取消或跳过均不自动写索引。原 GitHub 发布前及索引来源校验保持不变，手动索引/dry-run 也不额外访问 Gitee。
+
+GitHub 已公开而镜像失败时，只修复并重跑同步阶段，或手动运行 Sync2Gitee 指定原 Tag；不重新构建或移动 GitHub Tag，不自动删除已有 Gitee Release/附件。同步成功后再重跑索引或手动运行 SyncResourceIndex。独立手动 Sync2Gitee 只上传，不自动写索引；人工修复索引前应先确认相应同步 Workflow 成功。Gitee 上已存在同 Tag 的部分镜像需人工处理，不在同步中自动覆盖。
 
 ## 资源记录来源
 

@@ -44,11 +44,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Check index writer token before creating a tag
+      - name: Check mirror and index tokens before creating a tag
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($Env:GITEE_TOKEN)) { throw 'Configure GITEE_TOKEN first; no tag was created.' }
           python scripts/update_index.py --check-config
           if ($LASTEXITCODE -ne 0) { throw 'Configure the cross-repository index token first; no tag was created.' }
       - name: Reject an existing Release including a draft
@@ -172,8 +174,17 @@ jobs:
           name: resource-package-${{ steps.source.outputs.tag || github.run_id }}
           path: artifacts/resources/
           if-no-files-found: ignore
-  update-index:
+
+  sync-2-gitee:
     needs: release
+    uses: ./.github/workflows/Sync2Gitee.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    secrets:
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+
+  update-index:
+    needs: [release, sync-2-gitee]
     uses: ./.github/workflows/SyncResourceIndex.yml
     with:
       resource_source_ref: ${{ needs.release.outputs.source_ref }}

@@ -30,7 +30,7 @@ python scripts/validate_resource_package.py
 
 产物输出到 `artifacts/resources/`，该输出目录需要为空。重复构建时通过 `-OutputDirectory` 指定新的空目录，并在校验命令中用 `--directory` 指向同一个目录。发布由 GitHub Actions 完成。
 
-本仓库提供资源、构建脚本、Actions 工作流及版本声明。自动构建使用资源包校验脚本，发布平台为 GitHub。
+本仓库提供资源、构建脚本、Actions 工作流及版本声明。自动构建使用资源包校验脚本，先发布到 GitHub，再由 Actions 上传到 Gitee。
 
 音效制作说明见 [添加新语音包教程](Resources/Audio/添加新语音包教程.md)。
 
@@ -40,7 +40,9 @@ python scripts/validate_resource_package.py
 
 工作流使用 `gh` 创建非预发布的草稿并上传 ZIP、manifest 和 metadata，逐个下载核对大小与 SHA256 后，由固定提交版本的 `eregon/publish-release` 将该草稿公开。创建草稿或附件校验失败会停止公开发布。
 
-GitHub Release 创建、上传和公开步骤使用运行时提供的 `GITHUB_TOKEN`。确认公开成功后，独立索引 job 调用本仓库的 `SyncResourceIndex.yml`，传入本次冻结的源码 SHA 和 Tag；不调用 MOD 源码仓库。
+GitHub Release 创建、上传和公开步骤使用运行时提供的 `GITHUB_TOKEN`。确认公开成功后，调用本仓库的 `Sync2Gitee.yml`，将本次 Tag 的三份附件上传到 `ch3ngyz/Overcooked-2-HostUtilities-Resources`。同步使用 `nICEnnnnnnnLee/action-gitee-release@v2.0.0`，以该 Workflow 成功为准，不额外下载或校验 Gitee 镜像。
+
+自动发布顺序为 `release → sync-2-gitee → update-index`。只有 GitHub 发布和 Gitee 同步均成功，索引 job 才调用本仓库的 `SyncResourceIndex.yml`，传入本次冻结的源码 SHA 和 Tag；同步失败、取消或跳过时不运行自动索引，不调用 MOD 源码仓库。
 
 ## 多语言更新日志与索引同步
 
@@ -64,13 +66,13 @@ current-resource-info.json 示例（不手写 version，版本从 tag 推导）�
 
 构建和发布保留三种语言的完整日志。适配后的 MOD 使用当前 MOD 语言选择日志，缺译回退英文或旧 changelog，语言不影响下载平台。
 
-发布前配置 Actions Secret `UPDATE_INDEX_TOKEN`，授予两个公开 Release 仓库的 Contents 读写权限，并允许读取本资源仓库的声明和公开 Release。运行时 `GITHUB_TOKEN` 只负责本仓库 Release，不能替代跨仓库写入凭据。不再需要 `UPDATE_INDEX_REPOSITORY`、私有仓库权限或 repository_dispatch。令牌仅通过环境变量传入，不写入源码、命令参数或产物；创建 Tag 前会检查索引令牌已配置，但这不代表已验证其远程权限。
+发布前配置 Actions Secret `GITEE_TOKEN`，允许在上述 Gitee 资源仓库创建 Release、上传附件；另配置 `UPDATE_INDEX_TOKEN`，授予两个公开 Release 仓库的 Contents 读写权限，并允许读取本资源仓库的声明和公开 Release。运行时 `GITHUB_TOKEN` 负责本仓库 Release 和同步时读取 GitHub 附件，不能替代跨仓库写入凭据。不再需要 `UPDATE_INDEX_REPOSITORY`、私有仓库权限或 repository_dispatch。令牌仅通过环境变量传入，不写入源码、命令参数或产物；创建 Tag 前会检查两个 Secret 已配置，但这不代表已验证其远程权限。
 
 同步目标固定为 `CH3NGYZ/Overcooked-2-HostUtilities-Beta-Releases` 和 `CH3NGYZ/Overcooked-2-HostUtilities-Stable-Releases` 的 main 根 `update.json`。哪个仓库存在该文件就更新哪个；两边都有就都更新，两边都没有就都跳过，不创建索引。只合并 `resources.releases`，同数字版本整体替换，保留 MOD、代理及其他字段。API 权限或服务错误会停止合并，不能当作缺文件。
 
 新资源协议需要 MOD 1.8.7.02；先发布该 MOD，再发布资源。旧 v1.8.7.01 DLL 不支持新的资源 Tag 和省略 versionCode 的记录；资源加入索引后，仍在使用该旧版的用户需要手动升级。
 
-Release 已公开后索引失败，保留现有 Tag 和资产，只重跑索引 job 或手动运行 `SyncResourceIndex.yml`，不要重跑发布已有 Tag。本地构建和包校验不要求索引凭据。
+GitHub Release 已公开后，Gitee 同步失败时保留现有 GitHub Tag 和资产，仅修复并重跑同步 job，或手动运行 `Sync2Gitee.yml` 并填写原 Tag。同步不会自动删除已有 Gitee Release 或覆盖附件；若已留下同 Tag 的部分镜像，需先人工处理其状态。Gitee 同步成功后若只有索引失败，只重跑索引 job 或手动运行 `SyncResourceIndex.yml`；不要重跑已有 Tag 的发布。本地构建和包校验不要求同步或索引凭据。
 
 ## 手动同步当前资源信息
 
