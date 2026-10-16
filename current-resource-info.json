@@ -1,0 +1,11 @@
+{
+  "tag": "v1.0.5",
+  "minModVersion": "1.9.0",
+  "resourceFormat": 1,
+  "changelog": "降低音频音量。",
+  "changelogs": {
+    "zh-cn": "降低音频音量。",
+    "en-us": "Reduced audio volume.",
+    "ko-kr": "오디오 볼륨을 낮췄습니다."
+  }
+}

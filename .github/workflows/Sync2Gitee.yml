@@ -1,0 +1,85 @@
+name: Sync Release to Gitee
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Published resource Release tag to mirror
+        type: string
+        required: true
+    secrets:
+      GITEE_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing published resource Release tag; does not rebuild or update indexes
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync-release:
+    name: Sync Current Release to Gitee
+    runs-on: windows-latest
+    timeout-minutes: 60
+    concurrency:
+      group: resource-gitee-sync-${{ inputs.tag }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download the current published GitHub Release attachments
+        id: source
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          RESOURCE_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($Env:RESOURCE_TAG -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Invalid resource tag.' }
+          if ([string]::IsNullOrWhiteSpace($Env:GITEE_TOKEN)) { throw 'Configure GITEE_TOKEN before syncing.' }
+          $releaseJson = & gh api "repos/$Env:GITHUB_REPOSITORY/releases/tags/$Env:RESOURCE_TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to read the published GitHub Release.' }
+          $release = ($releaseJson -join "`n") | ConvertFrom-Json
+          if ($release.tag_name -cne $Env:RESOURCE_TAG -or $release.draft -ne $false -or $release.prerelease -ne $false) {
+            throw 'Expected the selected published, non-prerelease GitHub Release.'
+          }
+          $assetNames = @('HostUtilities.Resources.zip', 'HostUtilities.Resources.manifest', 'release-metadata.json')
+          if (@($release.assets).Count -ne $assetNames.Count) { throw 'Expected exactly three resource attachments.' }
+          foreach ($name in $assetNames) {
+            $asset = @($release.assets | Where-Object { $_.name -ceq $name })
+            if ($asset.Count -ne 1 -or $asset[0].state -cne 'uploaded') { throw "Missing uploaded attachment: $name" }
+          }
+          $assetDirectory = Join-Path $Env:GITHUB_WORKSPACE 'release-assets'
+          if (Test-Path -LiteralPath $assetDirectory) { throw 'Use a fresh release-assets directory.' }
+          [IO.Directory]::CreateDirectory($assetDirectory) | Out-Null
+          foreach ($name in $assetNames) {
+            & gh release download $Env:RESOURCE_TAG --repo $Env:GITHUB_REPOSITORY --pattern $name --dir $assetDirectory
+            if ($LASTEXITCODE -ne 0) { throw "Unable to download GitHub attachment: $name" }
+            if (!(Test-Path -LiteralPath (Join-Path $assetDirectory $name) -PathType Leaf)) { throw "Downloaded attachment is missing: $name" }
+          }
+          $title = if ([string]::IsNullOrWhiteSpace($release.name)) { $Env:RESOURCE_TAG } else { $release.name }
+          $body = if ([string]::IsNullOrWhiteSpace($release.body)) { '-' } else { $release.body }
+          foreach ($entry in @{ name = $title; body = $body }.GetEnumerator()) {
+            $delimiter = 'release_' + [Guid]::NewGuid().ToString('N')
+            [IO.File]::AppendAllText($Env:GITHUB_OUTPUT, "$($entry.Key)<<$delimiter`n$($entry.Value)`n$delimiter`n", [Text.UTF8Encoding]::new($false))
+          }
+      - name: Create the Gitee Release and upload attachments
+        uses: nICEnnnnnnnLee/action-gitee-release@v2.0.0
+        with:
+          gitee_action: create_release
+          gitee_owner: ch3ngyz
+          gitee_repo: Overcooked-2-HostUtilities-Resources
+          gitee_token: ${{ secrets.GITEE_TOKEN }}
+          gitee_tag_name: ${{ inputs.tag }}
+          gitee_release_name: ${{ steps.source.outputs.name }}
+          gitee_release_body: ${{ steps.source.outputs.body }}
+          gitee_target_commitish: main
+          gitee_upload_retry_times: 3
+          gitee_files: |
+            release-assets/*

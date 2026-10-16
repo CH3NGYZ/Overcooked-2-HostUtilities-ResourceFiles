@@ -1,0 +1,68 @@
+name: Update proxies and ConfigurationManager
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Select the index sections to replace
+        type: choice
+        options: [proxies, configurationmanager, both]
+        default: proxies
+      release_file_link:
+        description: GitHub Release ZIP link; required when updating ConfigurationManager
+        type: string
+        required: false
+      dry_run:
+        description: Verify selected sources and proposed indexes without writing
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: public-resource-index-writer
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate manual selection before building or downloading
+        env:
+          INDEX_TARGET: ${{ inputs.target }}
+          RELEASE_FILE_LINK: ${{ inputs.release_file_link }}
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, 'scripts')
+          from configurationmanager_index import parse_link
+          target = os.environ['INDEX_TARGET']
+          if target not in ('proxies', 'configurationmanager', 'both'):
+              raise ValueError('Unsupported auxiliary section selection.')
+          if target != 'proxies':
+              parse_link(os.environ.get('RELEASE_FILE_LINK'))
+          PY
+      - uses: actions/setup-dotnet@v5
+        if: inputs.target != 'proxies'
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build the static BepInPlugin metadata reader
+        if: inputs.target != 'proxies'
+        run: dotnet build scripts/PluginVersionReader/PluginVersionReader.csproj --configuration Release --output artifacts/plugin-version-reader --nologo
+      - name: Replace only the verified selected sections
+        env:
+          GH_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
+          INDEX_TARGET: ${{ inputs.target }}
+          RELEASE_FILE_LINK: ${{ inputs.release_file_link }}
+          INDEX_DRY_RUN: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          options=(--target "$INDEX_TARGET" --output artifacts/auxiliary-index.json)
+          if [[ "$INDEX_DRY_RUN" == "true" ]]; then options+=(--dry-run); fi
+          python scripts/update_auxiliary_indexes.py "${options[@]}"

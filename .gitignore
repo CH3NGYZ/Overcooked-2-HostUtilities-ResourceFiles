@@ -1,0 +1,18 @@
+# Local build output and Python caches.
+/artifacts/
+__pycache__/
+*.py[cod]
+/scripts/PluginVersionReader/bin/
+/scripts/PluginVersionReader/obj/
+
+# Local development notes and tests are not part of the public source repository.
+/AGENTS.md
+/GOAL.md
+/tests/
+
+# Local environment credentials.
+/.env
+/.env.*
+.vscode
+# Manual mirror helper depends on a local executable and local credentials.
+/scripts/Sync-ResourceReleasesToGitee.ps1

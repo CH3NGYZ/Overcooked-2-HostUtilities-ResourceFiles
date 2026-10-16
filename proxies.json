@@ -1,0 +1,415 @@
+{
+  "schemaVersion": 1,
+  "proxies": [
+    {
+      "id": "gh-h233",
+      "name": "gh.h233.eu.org",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh.h233.eu.org/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gh-ddlc",
+      "name": "gh.ddlc.top",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh.ddlc.top/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gh-proxy-org",
+      "name": "gh-proxy.org",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh-proxy.org/{url}",
+      "enabled": true
+    },
+    {
+      "id": "cdn-gh-proxy-org",
+      "name": "cdn.gh-proxy.org",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://cdn.gh-proxy.org/{url}",
+      "enabled": true
+    },
+    {
+      "id": "edgeone-gh-proxy-org",
+      "name": "edgeone.gh-proxy.org",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://edgeone.gh-proxy.org/{url}",
+      "enabled": true
+    },
+    {
+      "id": "cors-isteed",
+      "name": "cors.isteed.cc",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://cors.isteed.cc/{url_no_scheme}",
+      "enabled": true
+    },
+    {
+      "id": "ghproxy-it",
+      "name": "ghproxy.it",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://ghproxy.it/{url}",
+      "enabled": true
+    },
+    {
+      "id": "github-boki",
+      "name": "github.boki.moe",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://github.boki.moe/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gh-jasonzeng",
+      "name": "gh.jasonzeng.dev",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh.jasonzeng.dev/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gh-monlor",
+      "name": "gh.monlor.com",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh.monlor.com/{url}",
+      "enabled": true
+    },
+    {
+      "id": "github-geekery",
+      "name": "github.geekery.cn",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://github.geekery.cn/{url}",
+      "enabled": true
+    },
+    {
+      "id": "github-ednovas",
+      "name": "github.ednovas.xyz",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://github.ednovas.xyz/{url}",
+      "enabled": true
+    },
+    {
+      "id": "ghfile-geekertao",
+      "name": "ghfile.geekertao.top",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://ghfile.geekertao.top/{url}",
+      "enabled": true
+    },
+    {
+      "id": "ghp-keleyaa",
+      "name": "ghp.keleyaa.com",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://ghp.keleyaa.com/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gh-chjina",
+      "name": "gh.chjina.com",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh.chjina.com/{url}",
+      "enabled": true
+    },
+    {
+      "id": "ghpxy-hwinzniej",
+      "name": "ghpxy.hwinzniej.top",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://ghpxy.hwinzniej.top/{url}",
+      "enabled": true
+    },
+    {
+      "id": "cdn-crashmc",
+      "name": "cdn.crashmc.com",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://cdn.crashmc.com/{url}",
+      "enabled": true
+    },
+    {
+      "id": "git-yylx",
+      "name": "git.yylx.win",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://git.yylx.win/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gitproxy-mrhjx",
+      "name": "gitproxy.mrhjx.cn",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gitproxy.mrhjx.cn/{url}",
+      "enabled": true
+    },
+    {
+      "id": "ghproxy-cxkpro",
+      "name": "ghproxy.cxkpro.top",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://ghproxy.cxkpro.top/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gh-xxooo",
+      "name": "gh.xxooo.cf",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh.xxooo.cf/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gh-idayer",
+      "name": "gh.idayer.com",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh.idayer.com/{url}",
+      "enabled": true
+    },
+    {
+      "id": "down-npee",
+      "name": "down.npee.cn",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://down.npee.cn/?{url}",
+      "enabled": true
+    },
+    {
+      "id": "raw-ihtw",
+      "name": "raw.ihtw.moe",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://raw.ihtw.moe/{url_no_scheme}",
+      "enabled": true
+    },
+    {
+      "id": "xget",
+      "name": "Xget",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://xget.xi-xu.me/gh/{github_path}",
+      "enabled": true
+    },
+    {
+      "id": "gh-zwy",
+      "name": "gh.zwy.one",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://gh.zwy.one/{url}",
+      "enabled": true
+    },
+    {
+      "id": "ghproxy-monkeyray",
+      "name": "ghproxy.monkeyray.net",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://ghproxy.monkeyray.net/{url}",
+      "enabled": true
+    },
+    {
+      "id": "ghproxy-net",
+      "name": "ghproxy.net",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://ghproxy.net/{url}",
+      "enabled": true
+    },
+    {
+      "id": "ghfast",
+      "name": "ghfast.top",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://ghfast.top/{url}",
+      "enabled": true
+    },
+    {
+      "id": "wget-la",
+      "name": "wget.la",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://wget.la/{url}",
+      "enabled": true
+    },
+    {
+      "id": "oc2gh-release",
+      "name": "oc2gh.ch3ng.top",
+      "platform": "github",
+      "purposes": [
+        "release"
+      ],
+      "template": "https://oc2gh.ch3ng.top/{url_path}",
+      "enabled": true
+    },
+    {
+      "id": "wget-la-raw",
+      "name": "wget.la",
+      "platform": "github",
+      "purposes": [
+        "raw"
+      ],
+      "template": "https://wget.la/{url}",
+      "enabled": true
+    },
+    {
+      "id": "hk-gh-proxy-raw",
+      "name": "hk.gh-proxy.org",
+      "platform": "github",
+      "purposes": [
+        "raw"
+      ],
+      "template": "https://hk.gh-proxy.org/{url}",
+      "enabled": true
+    },
+    {
+      "id": "ghfast-raw",
+      "name": "ghfast.top",
+      "platform": "github",
+      "purposes": [
+        "raw"
+      ],
+      "template": "https://ghfast.top/{url}",
+      "enabled": true
+    },
+    {
+      "id": "gh-catmak-raw",
+      "name": "gh.catmak.name",
+      "platform": "github",
+      "purposes": [
+        "raw"
+      ],
+      "template": "https://gh.catmak.name/{url}",
+      "enabled": true
+    },
+    {
+      "id": "fastly-jsdelivr",
+      "name": "Fastly JSDelivr",
+      "platform": "github",
+      "purposes": [
+        "raw"
+      ],
+      "template": "https://fastly.jsdelivr.net/gh/{owner}/{repo}@{branch}/{path}",
+      "enabled": true
+    },
+    {
+      "id": "cdn-gh-proxy-raw",
+      "name": "cdn.gh-proxy.org",
+      "platform": "github",
+      "purposes": [
+        "raw"
+      ],
+      "template": "https://cdn.gh-proxy.org/{url}",
+      "enabled": true
+    },
+    {
+      "id": "g-blfrp-raw",
+      "name": "g.blfrp.cn",
+      "platform": "github",
+      "purposes": [
+        "raw"
+      ],
+      "template": "https://g.blfrp.cn/{url}",
+      "enabled": true
+    },
+    {
+      "id": "oc2gh-raw",
+      "name": "oc2gh.ch3ng.top",
+      "platform": "github",
+      "purposes": [
+        "raw"
+      ],
+      "template": "https://oc2gh.ch3ng.top/{url_path}",
+      "enabled": true
+    },
+    {
+      "id": "oc2ghapi",
+      "name": "oc2ghapi.ch3ng.top",
+      "platform": "github",
+      "purposes": [
+        "api"
+      ],
+      "template": "https://oc2ghapi.ch3ng.top/{url_path}",
+      "enabled": true
+    },
+    {
+      "id": "oc2gtapi",
+      "name": "oc2gtapi.ch3ng.top",
+      "platform": "gitee",
+      "purposes": [
+        "api"
+      ],
+      "template": "https://oc2gtapi.ch3ng.top/{url_path}",
+      "enabled": true
+    }
+  ]
+}
