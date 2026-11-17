@@ -17,7 +17,7 @@ try
         Console.WriteLine(JsonSerializer.Serialize(ReadModMetadata(pe, reader)));
         return 0;
     }
-    if (reader.GetString(reader.GetAssemblyDefinition().Name) != "MOD Settings / MOD 设置")
+    if (reader.GetString(reader.GetAssemblyDefinition().Name) != "OC2ModSettings")
         throw new InvalidDataException("插件程序集身份不符合预期。");
     var versions = new List<string>();
     foreach (var handle in reader.TypeDefinitions)
