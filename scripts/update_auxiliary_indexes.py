@@ -74,7 +74,8 @@ def main():
         if args.target in ('proxies', 'both'):
             updates['proxies'] = validate_proxies(json.loads((ROOT/'proxies.json').read_text(encoding='utf-8-sig')))
         if args.target in ('modsettingsmanager', 'both'):
-            updates['modsettingsmanager'] = collect_record(api, os.environ.get('RELEASE_FILE_LINK'), args.reader)
+            updates['modsettingsmanager'] = collect_record(api, os.environ.get('RELEASE_FILE_LINK'), args.reader,
+                                                          release_note=os.environ.get('RELEASE_NOTE'))
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps(updates, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

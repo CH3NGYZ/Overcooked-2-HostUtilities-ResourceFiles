@@ -200,7 +200,7 @@ def plugin_version(dll, reader):
     return version
 
 
-def collect_record(api, url, reader):
+def collect_record(api, url, reader, release_note=None):
     link = parse_link(url)
     record = asset_metadata(api, link)
     body = download_package(link.url, record['size'])
@@ -210,6 +210,8 @@ def collect_record(api, url, reader):
     # Read the actual plugin version; never infer it from the tag or AssemblyVersion.
     if numeric_version(link.tag[1:]) != numeric_version(version):
         raise ValueError('Release Tag 与 DLL BepInPlugin 版本的数值不一致。')
+    if release_note and release_note.strip():
+        record['changelog'] = release_note
     return {'tag':record['tag'], 'version':version, **{k:v for k,v in record.items() if k != 'tag'}}
 
 
@@ -228,7 +230,8 @@ def main():
         parser.error('请配置具有公开仓库内容权限的 GH_TOKEN。')
     try:
         api = Api(token, opener=urllib.request.build_opener(NoRedirect()))
-        record = collect_record(api, os.environ.get('RELEASE_FILE_LINK'), args.reader)
+        record = collect_record(api, os.environ.get('RELEASE_FILE_LINK'), args.reader,
+                                release_note=os.environ.get('RELEASE_NOTE'))
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps({'modsettingsmanager':record}, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')

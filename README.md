@@ -101,9 +101,10 @@ python scripts/update_index.py --resource-source-ref <资源源码完整提交SH
 
 - `target=proxies`：从本仓库 main 的 `proxies.json` 读取并校验在线代理目录，只替换根 `proxies`，不需要文件链接或 .NET 读取器。
 - `target=modsettingsmanager`：将 Mod Settings 的实际 GitHub Release ZIP 链接填入 `release_file_link`，只替换根 `modsettingsmanager` 单对象。
+- `release_note`：可选的 Mod Settings 更新说明；填写时原样用作索引 `changelog`，留空或仅空白时使用该 Release 的完整说明。仅更新代理时忽略此输入，不修改 GitHub Release 正文。
 - `target=both`：先核验两种来源，再对每份索引一次合并两字段；任何来源校验失败都不写入。
 - `dry_run=true`：校验来源及拟议索引，不写入远端。正式写入使用同一 `UPDATE_INDEX_TOKEN`，两个目标缺文件都跳过。历史 `configurationmanager` 和其他字段原样保留，本入口不再维护旧组件字段。
 
-Mod Settings 的 Tag 来自链接，大小、SHA256 digest 和更新说明来自官方 Release API；下载 ZIP 核验后，静态读取唯一 `OC2ModSettings.dll`（程序集名 `OC2ModSettings`）的 `BepInPlugin` 版本和 GUID `com.ch3ngyz.plugin.overcooked2.modsettings`，不执行插件。Tag 必须为 `v` 加二至四段数字，实际插件版本保留原文，并与 Tag 数字部分补零比较相等；不能用 Tag、文件名或 AssemblyVersion 推导插件版本。API 无合法 SHA256、附件不符或插件声明缺失时失败，不补造包信息。
+Mod Settings 的 Tag 来自链接，大小和 SHA256 digest 来自官方 Release API，更新说明优先使用 `release_note`、留空时取 Release 正文；下载 ZIP 核验后，静态读取唯一 `OC2ModSettings.dll`（程序集名 `OC2ModSettings`）的 `BepInPlugin` 版本和 GUID `com.ch3ngyz.plugin.overcooked2.modsettings`，不执行插件。Tag 必须为 `v` 加二至四段数字，实际插件版本保留原文，并与 Tag 数字部分补零比较相等；不能用 Tag、文件名或 AssemblyVersion 推导插件版本。API 无合法 SHA256、附件不符或插件声明缺失时失败，不补造包信息。
 
 输出包含 `tag`、`version`、`url`、`size`、`sha256` 和 `changelog`，没有 `releases`；URL 保留去掉外围空白的输入。客户端已安装 Configuration Manager 或 Mod Settings 任一插件时保留现状，两者均缺失才使用 `modsettingsmanager` 补装 Mod Settings。维护索引不替代公共插件动作 API 的能力探测；详细字段、安全边界和恢复规则见 [索引维护](docs/IndexMaintenance.md)。

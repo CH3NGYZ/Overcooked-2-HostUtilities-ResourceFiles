@@ -11,6 +11,10 @@ on:
         description: GitHub Release ZIP link; required when updating Mod Settings
         type: string
         required: false
+      release_note:
+        description: Optional Mod Settings notes; leave blank to use the Release notes
+        type: string
+        required: false
       dry_run:
         description: Verify selected sources and proposed indexes without writing
         type: boolean
@@ -59,6 +63,7 @@ jobs:
           GH_TOKEN: ${{ secrets.UPDATE_INDEX_TOKEN }}
           INDEX_TARGET: ${{ inputs.target }}
           RELEASE_FILE_LINK: ${{ inputs.release_file_link }}
+          RELEASE_NOTE: ${{ inputs.release_note }}
           INDEX_DRY_RUN: ${{ inputs.dry_run }}
         shell: bash
         run: |

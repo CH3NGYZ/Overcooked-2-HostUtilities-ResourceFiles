@@ -46,7 +46,7 @@ Mod Settings 链接由环境变量 `RELEASE_FILE_LINK` 传入，由 `scripts/mod
 
 - 链接须为标准 GitHub Release HTTPS ZIP 下载地址；`tag` 必须为小写 `v` 加二至四段数字，ZIP 文件名只接受英文字母、数字、下划线、点和连字符。`tag`、`url` 保留链接内容，仅移除外围空白，不用 API URL 改写输入。
 - `size` 和 `sha256` 必须来自 API 的有效资产大小与 SHA256 digest，无 digest 直接失败；下载内容再次核对两者。不填写占位 URL、大小或摘要来生成可部署记录。
-- `changelog` 保留完整 Release body，没有说明则为空字符串。
+- 可选输入 `release_note` 通过环境变量 `RELEASE_NOTE` 传入共用采集器；非空白时原样写入索引 `changelog`，留空或仅空白时保留完整 Release body，Release 没有说明则为空字符串。仅更新代理时忽略，不修改 GitHub Release 正文。
 - ZIP 内必须恰有一个 `OC2ModSettings.dll`，程序集名为 `OC2ModSettings`。`version` 从该 DLL 的 `BepInEx.BepInPlugin` 特性读取，GUID 必须为 `com.ch3ngyz.plugin.overcooked2.modsettings`，二至四段数字版本保留原文；不从 Tag、文件名或 AssemblyVersion 推导。
 - DLL 仅接受 ZIP 根、`BepInEx/plugins/OC2ModSettings/`、`BepInEx/plugins/`、`OC2ModSettings/` 四种目录布局，拼写和大小写须一致。附带文档或资源必须在同一插件目录内，不能另有 DLL；不接受任意版本外层目录。ZIP 只支持单卷普通 stored/deflate，拒绝加密、Zip64、路径越界及文件/目录或大小写冲突，以免生成客户端无法安装的记录。
 - 实际 `BepInPlugin` 版本与 Tag 的数字部分补齐为四段后必须相等，例如 `v1.0.0` 与 `1.0` 相等，`v1.0.0` 与 `1.0.1` 拒绝。程序集版本不能替代插件特性校验。
