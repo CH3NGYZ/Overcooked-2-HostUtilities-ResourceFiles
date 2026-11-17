@@ -169,7 +169,7 @@ def read_resource(api, declared):
 
 
 def merge_index(current, channel, record, kind="resources"):
-    if kind not in ("resources", "configurationmanager", "auxiliary"):
+    if kind not in ("resources", "modsettingsmanager", "auxiliary"):
         raise ValueError("Unsupported resource index section.")
     if current is None:
         return None
@@ -177,11 +177,11 @@ def merge_index(current, channel, record, kind="resources"):
         raise ValueError("Invalid index structure or channel: " + channel)
     output = copy.deepcopy(current)
     if kind == "auxiliary":
-        if not isinstance(record, dict) or not record or set(record) - {"proxies", "configurationmanager"}:
-            raise ValueError("Auxiliary updates may contain only proxies and/or configurationmanager.")
+        if not isinstance(record, dict) or not record or set(record) - {"proxies", "modsettingsmanager"}:
+            raise ValueError("Auxiliary updates may contain only proxies and/or modsettingsmanager.")
         output.update(copy.deepcopy(record))
         return output
-    if kind == "configurationmanager":
+    if kind == "modsettingsmanager":
         output[kind] = copy.deepcopy(record)
         return output
     section = output.setdefault("resources", {})

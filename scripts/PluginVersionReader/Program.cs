@@ -17,7 +17,7 @@ try
         Console.WriteLine(JsonSerializer.Serialize(ReadModMetadata(pe, reader)));
         return 0;
     }
-    if (reader.GetString(reader.GetAssemblyDefinition().Name) != "ConfigurationManager")
+    if (reader.GetString(reader.GetAssemblyDefinition().Name) != "MOD Settings / MOD 设置")
         throw new InvalidDataException("插件程序集身份不符合预期。");
     var versions = new List<string>();
     foreach (var handle in reader.TypeDefinitions)
@@ -58,13 +58,13 @@ try
             var guid = blob.ReadSerializedString();
             var pluginName = blob.ReadSerializedString();
             var version = blob.ReadSerializedString();
-            if (guid != "com.bepis.bepinex.configurationmanager") continue;
+            if (guid != "com.ch3ngyz.plugin.overcooked2.modsettings") continue;
             if (string.IsNullOrEmpty(pluginName) || string.IsNullOrEmpty(version))
-                throw new InvalidDataException("缺少 ConfigurationManager 插件元数据。");
+                throw new InvalidDataException("缺少 Mod Settings 插件元数据。");
             versions.Add(version);
         }
     }
-    if (versions.Count != 1) throw new InvalidDataException("应当恰好有一个 ConfigurationManager BepInPlugin 特性。");
+    if (versions.Count != 1) throw new InvalidDataException("应当恰好有一个 Mod Settings BepInPlugin 特性。");
     Console.WriteLine(JsonSerializer.Serialize(new { version = versions[0] }));
     return 0;
 }

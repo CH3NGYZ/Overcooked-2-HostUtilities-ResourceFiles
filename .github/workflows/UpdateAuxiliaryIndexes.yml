@@ -1,14 +1,14 @@
-name: Update proxies and ConfigurationManager
+name: Update proxies and Mod Settings
 on:
   workflow_dispatch:
     inputs:
       target:
         description: Select the index sections to replace
         type: choice
-        options: [proxies, configurationmanager, both]
+        options: [proxies, modsettingsmanager, both]
         default: proxies
       release_file_link:
-        description: GitHub Release ZIP link; required when updating ConfigurationManager
+        description: GitHub Release ZIP link; required when updating Mod Settings
         type: string
         required: false
       dry_run:
@@ -40,9 +40,9 @@ jobs:
           import os
           import sys
           sys.path.insert(0, 'scripts')
-          from configurationmanager_index import parse_link
+          from modsettingsmanager_index import parse_link
           target = os.environ['INDEX_TARGET']
-          if target not in ('proxies', 'configurationmanager', 'both'):
+          if target not in ('proxies', 'modsettingsmanager', 'both'):
               raise ValueError('Unsupported auxiliary section selection.')
           if target != 'proxies':
               parse_link(os.environ.get('RELEASE_FILE_LINK'))

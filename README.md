@@ -82,7 +82,7 @@ GitHub Release 已公开后，Gitee 同步失败时保留现有 GitHub Tag 和�
 
 版本、Tag、兼容条件和三语日志来自所选声明；附件大小、SHA256、发布时间和真实包的 `sourceCommit` 来自 Release/metadata。`minModVersion`、`resourceFormat` 必须与包内 metadata 一致，否则客户端会拒绝安装，因此不允许用索引修改旧包的兼容条件。修正日志不要求重建包；同步时重新计算 `changelogSha256` 和 `changelogsSha256`。
 
-同数字版本记录整体原位替换，使用本次核验的实际 Tag；新版本插到 `resources.releases` 最前面，最多保留 5 条。MOD、代理、ConfigurationManager 和其他字段保留。只有资源写入器裁剪资源历史，MOD 索引任务不修改它；不会删除 GitHub Releases、Tag 或附件。
+同数字版本记录整体原位替换，使用本次核验的实际 Tag；新版本插到 `resources.releases` 最前面，最多保留 5 条。MOD、代理、Mod Settings、历史 ConfigurationManager 和其他字段保留。只有资源写入器裁剪资源历史，MOD 索引任务不修改它；不会删除 GitHub Releases、Tag 或附件。
 
 自动和手动索引均使用本仓库 `UPDATE_INDEX_TOKEN`；在本次资源仓库运行中查看最终结果，不需等待另一个仓库任务。重复运行可以修复索引，内容不变不再提交。两个目标先预检再分别写入，不是跨仓库原子事务；若第二个失败，第一个已核验提交仍有效，修复后可重跑补齐。
 
@@ -95,13 +95,15 @@ python scripts/update_index.py --dry-run
 python scripts/update_index.py --resource-source-ref <资源源码完整提交SHA> --tag v1.0.1 --dry-run
 ```
 
-## 手动同步代理与 ConfigurationManager
+## 手动同步代理与 Mod Settings
 
-在本仓库 Actions 中运行 `Update proxies and ConfigurationManager`（`UpdateAuxiliaryIndexes.yml`）。该流程只能手动触发，不随代理提交、资源发布或 MOD 发布自动运行：
+在本仓库 Actions 中运行 `Update proxies and Mod Settings`（`UpdateAuxiliaryIndexes.yml`）。该流程只能手动触发，不随代理提交、资源发布或 MOD 发布自动运行：
 
 - `target=proxies`：从本仓库 main 的 `proxies.json` 读取并校验在线代理目录，只替换根 `proxies`，不需要文件链接或 .NET 读取器。
-- `target=configurationmanager`：将 GitHub Release 的 BepInEx5 ZIP 链接填入 `release_file_link`，只替换根 `configurationmanager` 单对象。
+- `target=modsettingsmanager`：将 Mod Settings 的实际 GitHub Release ZIP 链接填入 `release_file_link`，只替换根 `modsettingsmanager` 单对象。
 - `target=both`：先核验两种来源，再对每份索引一次合并两字段；任何来源校验失败都不写入。
-- `dry_run=true`：校验来源及拟议索引，不写入远端。正式写入使用同一 `UPDATE_INDEX_TOKEN`，两个目标缺文件都跳过，其他字段保持不变。
+- `dry_run=true`：校验来源及拟议索引，不写入远端。正式写入使用同一 `UPDATE_INDEX_TOKEN`，两个目标缺文件都跳过。历史 `configurationmanager` 和其他字段原样保留，本入口不再维护旧组件字段。
 
-ConfigurationManager 的 Tag 来自链接，大小、SHA256 digest 和更新说明来自官方 Release API；下载 ZIP 核验后，静态读取唯一 `ConfigurationManager.dll` 的 `BepInPlugin` 版本，不执行插件。API 无合法 SHA256、附件不符或插件声明缺失时失败。输出包含 `tag`、`version`、`url`、`size`、`sha256` 和 `changelog`，没有 `releases`；URL 保留去掉外围空白的输入，插件版本保留原文（例如 `19.0`）。详细字段、安全边界和恢复规则见 [索引维护](docs/IndexMaintenance.md)。
+Mod Settings 的 Tag 来自链接，大小、SHA256 digest 和更新说明来自官方 Release API；下载 ZIP 核验后，静态读取唯一 `OC2ModSettings.dll`（程序集名 `OC2ModSettings`）的 `BepInPlugin` 版本和 GUID `com.ch3ngyz.plugin.overcooked2.modsettings`，不执行插件。Tag 必须为 `v` 加二至四段数字，实际插件版本保留原文，并与 Tag 数字部分补零比较相等；不能用 Tag、文件名或 AssemblyVersion 推导插件版本。API 无合法 SHA256、附件不符或插件声明缺失时失败，不补造包信息。
+
+输出包含 `tag`、`version`、`url`、`size`、`sha256` 和 `changelog`，没有 `releases`；URL 保留去掉外围空白的输入。客户端已安装 Configuration Manager 或 Mod Settings 任一插件时保留现状，两者均缺失才使用 `modsettingsmanager` 补装 Mod Settings。维护索引不替代公共插件动作 API 的能力探测；详细字段、安全边界和恢复规则见 [索引维护](docs/IndexMaintenance.md)。

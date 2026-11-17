@@ -1,4 +1,4 @@
-"""Manually synchronize proxies and/or ConfigurationManager in existing indexes."""
+"""Manually synchronize proxies and/or Mod Settings in existing indexes."""
 import argparse
 import copy
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import urllib.parse
 
-from configurationmanager_index import collect_record
+from modsettingsmanager_index import collect_record
 from update_index import Api, ROOT, sync_indexes
 
 
@@ -59,7 +59,7 @@ def validate_proxies(config):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--target', choices=('proxies', 'configurationmanager', 'both'), required=True)
+    parser.add_argument('--target', choices=('proxies', 'modsettingsmanager', 'both'), required=True)
     parser.add_argument('--reader', type=Path, default=ROOT/'artifacts/plugin-version-reader/PluginVersionReader.dll')
     parser.add_argument('--output', type=Path, help='Save the verified selected sections as JSON.')
     parser.add_argument('--dry-run', action='store_true')
@@ -73,8 +73,8 @@ def main():
         # Verify every selected source before reading or writing either target index.
         if args.target in ('proxies', 'both'):
             updates['proxies'] = validate_proxies(json.loads((ROOT/'proxies.json').read_text(encoding='utf-8-sig')))
-        if args.target in ('configurationmanager', 'both'):
-            updates['configurationmanager'] = collect_record(api, os.environ.get('RELEASE_FILE_LINK'), args.reader)
+        if args.target in ('modsettingsmanager', 'both'):
+            updates['modsettingsmanager'] = collect_record(api, os.environ.get('RELEASE_FILE_LINK'), args.reader)
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps(updates, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
